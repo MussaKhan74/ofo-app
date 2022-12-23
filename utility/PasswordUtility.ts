@@ -1,6 +1,8 @@
 import bcrypt from "bcrypt";
+import { Request } from "express";
 import jwt from "jsonwebtoken";
 import { VandorPayload } from "../dto";
+import { AuthPayload } from "../dto/Auth.dto";
 
 export const GenerateSalt = async () => {
   return await bcrypt.genSalt();
@@ -18,8 +20,26 @@ export const ValidatePassword = async (
   return (await GeneratePassword(enteredPassword, salt)) === savedPassword;
 };
 
-export const GenerateSignature = (payload: VandorPayload) => {
+export const GenerateSignature = async (payload: VandorPayload) => {
   return jwt.sign(payload, `${process.env.APP_SECRET}`, {
     expiresIn: "1d",
   });
+};
+
+export const ValidateSignature = async (req: Request) => {
+  const signature = req.get("Authorization");
+
+  if (signature) {
+    try {
+      const payload = (await jwt.verify(
+        signature.split(" ")[1],
+        `${process.env.APP_SECRET}`
+      )) as AuthPayload;
+      req.user = payload;
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+  return false;
 };
